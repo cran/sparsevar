@@ -1,0 +1,11 @@
+base
+Matrix
+ncvreg
+foreach
+glmnet
+MTS
+ggplot2
+reshape2
+lattice
+caret
+sparsevar
