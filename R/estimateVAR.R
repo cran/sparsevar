@@ -7,15 +7,30 @@
 #' @param p order of the VAR model
 #' @param penalty the penalty function to use. Possible values are \code{"ENET"}, 
 #' \code{"SCAD"} or \code{"MCP"}
-#' @param options list of options for the function. Global options are:
-#' \code{threshold}: \code{TRUE} or \code{FALSE}. If \code{TRUE} all the entries smaller 
-#' than the oracle threshold are set to zero. \code{scale} scale the data?
+#' @param options a list containing the options for the estimation. Global options are:
+#' \code{threshold}: if \code{TRUE} all the entries smaller than the oracle threshold are set to zero; 
+#' \code{scale}: scale the data (default = FALSE)?
+#' \code{nfolds}: the number of folds used for cross validation (default = 10);
+#' \code{parallel}: if \code{TRUE} use multicore backend (default = FALSE);
+#' \code{ncores}: if \code{parallel} is \code{TRUE}, specify the number of cores to use
+#' for parallel evaluation. Options for ENET estimation: 
+#' \code{alpha}: the value of alpha to use in elastic net (0 is Ridge regression, 1 is LASSO (default));
+#' \code{type.measure}: the measure to use for error evaluation (\code{"mse"} or \code{"mae"});
+#' \code{nlambda}: the number of lambdas to use in the cross validation (default = 100);
+#' \code{repeatedCV}: use repeated cross validation (default = FALSE);
+#' \code{nRepeats}: the number of repeats in the repeated cross validation (default = 3);
+#' \code{timeSlice}: use time slice validation (default = FALSE);
+#' \code{leaveOutLast}: in the time slice validation leave out the last \code{leaveOutLast} observations
+#' (default = 15);
+#' \code{horizon}: the horizon to use for estimating mse/mae (default = 1);
+#' \code{fixedWindow}: use fixed window (default) or expanding window (FALSE).
 #' 
-#' @return A the list (of length \code{p}) of the estimated matrices of the process
-#' @return fit the results of the penalized LS estimation
-#' @return mse the mean square error of the cross validation
-#' @return time elapsed time for the estimation
-#'
+#' @return \code{A} the list (of length \code{p}) of the estimated matrices of the process
+#' @return \code{fit} the results of the penalized LS estimation
+#' @return \code{mse} the mean square error of the cross validation
+#' @return \code{time} elapsed time for the estimation
+#' @return \code{residuals} the time series of the residuals 
+#' 
 #' @usage estimateVAR(data, p = 1, penalty = "ENET", options = NULL)
 #' 
 #' @export
@@ -52,13 +67,14 @@ estimateVAR <- function(data, p = 1, penalty = "ENET", options = NULL) {
     
     # By default repeatedCV = FALSE
     options$repeatedCV <- ifelse(is.null(options$repeatedCV), FALSE, TRUE)
+    options$timeSlice <- ifelse(is.null(options$timeSlice), FALSE, TRUE)
     
     # fit the ENET model
     t <- Sys.time()
     fit <- varENET(X, y, options)
     elapsed <- Sys.time() - t
     
-    if (options$repeatedCV == FALSE){
+    if ((options$repeatedCV == FALSE) && (options$timeSlice == FALSE)){
       # extract what is needed
       lambda <- ifelse(is.null(options$lambda), "lambda.min", options$lambda)
       # extract the coefficients and reshape the matrix
@@ -116,12 +132,16 @@ estimateVAR <- function(data, p = 1, penalty = "ENET", options = NULL) {
   # Get back the list of VAR matrices (of length p)
   A <- splitMatrix(A, p)
   
+  # Now that we have the matrices compute the residuals
+  res <- computeResiduals(data, A)
+  
   # Output
   output = list()
   output$A <- A
   output$fit <- fit
   output$mse <- mse
   output$time <- elapsed
+  output$residuals <- res
   return(output)
   
 }
@@ -134,20 +154,45 @@ varENET <- function(X,y, options = NULL) {
   nf <- ifelse(is.null(options$nfolds), 10, options$nfolds)
   parall <- ifelse(is.null(options$parallel), FALSE, options$parallel)
   ncores <- ifelse(is.null(options$ncores), 1, options$ncores)
-  repeatedCV <- options$repeatedCV #ifelse(is.null(options$repeatedCV), FALSE, TRUE)
+  repeatedCV <- options$repeatedCV # ifelse(is.null(options$repeatedCV), FALSE, TRUE)
   nRepeats <- ifelse(is.null(options$nRepeats), 3, options$nRepeats)
+  timeSlice <- options$timeSlice
+  initialWindow <- ifelse(is.null(options$leaveOutLast), nrow(X) - 15, nrow(X) - options$leaveOutLast)
+  horizon <- ifelse(is.null(options$horizon), 1, options$horizon)
+  fixedWindow <- ifelse(is.null(options$fixedWindow), TRUE, options$fixedWindow)
   
   if (repeatedCV == TRUE) {
     
-    trCtrl <- caret::trainControl(method = "repeatedcv", number = nf, repeats = nRepeats)
+    # Suppress warnings... Is this correct?
+    options(warn = -1)
+    trCtrl <- caret::trainControl(method = "repeatedcv", number = nf, repeats = nRepeats, returnData = FALSE)
     lam <- glmnet::glmnet(X, y, alpha = a)$lambda
     gr <- expand.grid(.alpha = a, .lambda = lam)
-    fit <- caret::train(x = X, y = y, method = "glmnet", trControl = trCtrl, tuneGrid = gr)
+    fit <- caret::train(x = X, y = y, method = "glmnet", trControl = trCtrl, tuneGrid = gr, metric = "RMSE")
     b <- stats::coef(fit$finalModel, fit$bestTune$lambda)
-    cvm <- 3
+    cvm <- min(fit$results$RMSE)^2 # extract the MSE
     fit <- list()
     fit$Avector <- b
-    fit$cvm <- cvm
+    fit$cvm <- cvm  
+    return(fit)
+    
+  } 
+  
+  if (timeSlice == TRUE) {
+    
+    # Suppress warnings... Is this correct?
+    options(warn = -1)
+    #inWind <- nrow(X) - 20
+    trCtrl <- caret::trainControl(method = "timeslice", returnData = FALSE,
+                                  initialWindow = initialWindow, horizon = horizon, fixedWindow = fixedWindow)
+    lam <- glmnet::glmnet(X, y, alpha = a)$lambda
+    gr <- expand.grid(.alpha = a, .lambda = lam)
+    fit <- caret::train(x = X, y = y, method = "glmnet", trControl = trCtrl, tuneGrid = gr, metric = "RMSE")
+    b <- stats::coef(fit$finalModel, fit$bestTune$lambda)
+    cvm <- min(fit$results$RMSE)^2 # extract the MSE
+    fit <- list()
+    fit$Avector <- b
+    fit$cvm <- cvm  
     return(fit)
     
   } 
@@ -160,21 +205,17 @@ varENET <- function(X,y, options = NULL) {
     foldsIDs <- sort(rep(seq(nf), length = nr))
   }
   
-  ##############################################################################
-  # TODO: change parallel backend (parallel -> doMC)
-  ##############################################################################
   if(parall == TRUE) {
     if(ncores < 1) {
       stop("The number of cores must be > 1")
     } else {
-      #cl <- registerDoMC(ncores)
-      cl <- parallel::makeCluster(ncores)
+        # cl <- doMC::registerDoMC(cores = ncores) # using doMC as in glmnet vignettes
+        cl <- doParallel::registerDoParallel(cores = ncores)
       if (length(foldsIDs) == 0) {
         cvfit <- glmnet::cv.glmnet(X, y, alpha = a, nlambda = nl, type.measure = tm, nfolds = nf, parallel = TRUE)
       } else {
         cvfit <- glmnet::cv.glmnet(X, y, alpha = a, nlambda = nl, type.measure = tm, foldid = foldsIDs, parallel = TRUE)
       }
-      parallel::stopCluster(cl)
     }
   } else {
     if (length(foldsIDs) == 0) {
@@ -271,4 +312,26 @@ duplicateMatrix <- function(data, p) {
   outputData <- outputData[p:nr, ]
   return(outputData)
   
+}
+
+computeResiduals <- function(data, A) {
+  
+  nr <- nrow(data)
+  nc <- ncol(data)
+  p <- length(A)
+  
+  res <- matrix(0, ncol = nc, nrow = nr)
+  f <- matrix(0, ncol = nc, nrow = nr)
+  
+  for (i in 1:p) {
+    
+    tmpD <- rbind(matrix(0, nrow = i, ncol = nc), data[1:(nrow(data)-i), ])
+    tmpF <- t(A[[i]] %*% t(tmpD))
+    f <- f + tmpF  
+    
+  }
+  
+  res <- data - f
+  return(res)
+    
 }

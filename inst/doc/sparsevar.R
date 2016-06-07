@@ -6,7 +6,7 @@
 #  devtools::install_github("svazzole/sparsevar")
 
 ## ------------------------------------------------------------------------
-suppressMessages(library(sparsevar))
+library(sparsevar)
 
 ## ---- cache = TRUE-------------------------------------------------------
 set.seed(1)

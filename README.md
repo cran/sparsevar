@@ -1,15 +1,59 @@
-## Sparse VAR (sparsevar) [![License](http://img.shields.io/badge/license-GPL%20%28%3E=%202%29-brightgreen.svg?style=flat)](http://www.gnu.org/licenses/gpl-2.0.html) [![Version](https://img.shields.io/badge/version-0.0.3-oran.svg)](https://github.com/svazzole/sparsevar)
+## Sparse VAR (sparsevar) 
+[![License](http://img.shields.io/badge/license-GPL%20%28%3E=%202%29-brightgreen.svg?style=flat)](http://www.gnu.org/licenses/gpl-2.0.html) 
+[![Version](https://img.shields.io/badge/version-0.0.5-oran.svg)](https://github.com/svazzole/sparsevar)
+[![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/sparsevar)](https://cran.r-project.org/package=sparsevar)
+[![Downloads](http://cranlogs.r-pkg.org/badges/sparsevar)](https://cran.r-project.org/package=sparsevar)
 
 Some R functions useful to estimate sparse VAR / VECM models.
 
 ### Installation
 
-To install:
+To install the stable version from CRAN:
+```
+install.package("sparsevar")
+```
+
+To install the developing version:
 ```
 install.packages("devtools")
 devtools::install_github("svazzole/sparsevar")
 ```
 Check [here](https://www.rstudio.com/products/rpackages/devtools/) to understand which are the dependencies of `devtools` for your OS.
+
+### Quick start
+
+To load the `sparsevar` package simply type
+```{r}
+library(sparsevar)
+```
+
+Using the function included in the package, we simply generate a 20x20 VAR(2) process
+```{r}
+set.seed(1)
+sim <- simulateVAR(N = 20, p = 2)
+```
+This command will generate a model with two sparse matrices with 5% of non-zero entries and a Toeplitz variance-covariance matrix (with $\rho=0.5$).
+We can estimate the matrices of the process using
+```{r}
+est <- estimateVAR(sim$data$series, p = 2, options = list(foldsIDs = TRUE))
+```
+
+The results can be seen by plotting the matrices
+```{r}
+plotComparisonVAR(sim, est)
+```
+the first row of the plot is made by the matrices of the simulated process and the second row is formed by their estimates.
+
+One can also estimate the variance/covariance matrix of the residuals with 
+```{r}
+M <- cov(est$residuals)
+plotMatrix(M)
+```
+
+and compare with the covariance matrix of the errors of the generating process
+```{r}
+plotMatrix(sim$S)
+```
 
 ### Usage
 
@@ -17,9 +61,11 @@ The functions included are:
 - `estimateVAR`: to estimate a sparse VAR multivariate time series with ENET, SCAD or MC+;
 - `estimateVECM`: to estimate a sparse VECM (Vector Error Correction Model) using LS with penalty (again: ENET, SCAD or MC+);
 - `simulateVAR`: to generate a sparse VAR multivariate time series;
-- `mcSimulations`: to generate Monte Carlo simulations of SVAR and the relative estimation;
+- `mcSimulations`: to generate Monte Carlo simulations of sparse VAR and the relative errors estimation;
 - `createSparseMatrix`: used to create sparse matrices with a given density;
 - `plotMatrix`: useful to plot sparse matrices;
+- `plotVAR`: plot all the matrices of the model;
+- `plotComparisonVAR`: plot the comparison between the matrices of the simulated model and the matrices of the estimate.
 
 ### References
 [[1](http://projecteuclid.org/euclid.aos/1434546214)] Basu, Sumanta; Michailidis, George. Regularized estimation in sparse high-dimensional time series models. Ann. Statist. 43 (2015), no. 4, 1535--1567. doi:10.1214/15-AOS1315. 
