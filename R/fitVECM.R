@@ -2,6 +2,9 @@
 #' 
 #' @description A function to estimate a (possibly big) multivariate VECM time series
 #' using penalized least squares methods, such as ENET, SCAD or MC+.
+#'  
+#' @usage fitVECM(data, p, penalty, method, logScale, ...)
+#' 
 #' @param data the data from the time series: variables in columns and observations in 
 #' rows
 #' @param p order of the VECM model 
@@ -9,7 +12,8 @@
 #' \code{"SCAD"} or \code{"MCP"}
 #' @param logScale should the function consider the \code{log} of the inputs? By default
 #' this is set to \code{TRUE} 
-#' @param options options for the function (TODO: specify)
+#' @param method \code{"cv"} or \code{"timeSlice"}
+#' @param ... options for the function (TODO: specify)
 #' 
 #' @return Pi the matrix \code{Pi} for the VECM model 
 #' @return G the list (of length \code{p-1}) of the estimated matrices of the process
@@ -17,11 +21,8 @@
 #' @return mse the mean square error of the cross validation
 #' @return time elapsed time for the estimation
 #' 
-#' @usage estimateVECM(data, p=2, penalty="ENET", logScale=TRUE, options=NULL)
-#' 
 #' @export
-estimateVECM <- function(data, p = 2, penalty = "ENET", logScale = TRUE, 
-                         options = NULL) {
+fitVECM <- function(data, p = 2, penalty = "ENET", method = "cv", logScale = TRUE, ...) {
   
   nr <- nrow(data)
   nc <- ncol(data)
@@ -33,13 +34,13 @@ estimateVECM <- function(data, p = 2, penalty = "ENET", logScale = TRUE,
     # data[is.infinite(data)] <- 0
   }
   
-  resultsVAR <- estimateVAR(data, p = p, penalty = penalty, options = options)
+  resultsVAR <- fitVAR(data, p = p, penalty = penalty, method = method, ...)
   M <- resultsVAR$A
   I <- diag(x = 1, nrow = nc, ncol = nc)
   
   # Coint matrix
   Pi <- -(I - matrixSum(M, ix = 1))
-
+  
   # Gamma matrices
   G <- list()
   

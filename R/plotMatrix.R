@@ -10,6 +10,10 @@
 #' @export
 plotMatrix <- function(M) {
   
+  if (!is.matrix(M)) { 
+    stop("Input must be a matrix") 
+  }
+  
   nr <- nrow(M)
   nc <- ncol(M)
   M <- t(M)[, nc:1]
@@ -22,14 +26,19 @@ plotMatrix <- function(M) {
 #' 
 #' @description Plot all the matrices of a VAR model
 #' 
-#' @param A the list containing the VAR matrices to be plotted
+#' @param v an object of the class sparsevar type estimate or simulation
 #' @return An \code{image} plot with a particular color palette (black zero entries, red 
 #' for the negative ones and green for the positive)
-#' @usage plotVAR(A)
+#' @usage plotVAR(v)
 #' 
 #' @export
-plotVAR <- function(A) {
+plotVAR <- function(v) {
   
+  if (!checkIsVar(v)) {
+    stop("Input must be a var object")
+  } 
+  
+  A <- v$A
   p <- length(A)
   
   pl <- list()
@@ -54,10 +63,22 @@ plotVAR <- function(A) {
 #' @export
 plotComparisonVAR <- function(var1, var2) {
   
-  p <- length(var2$A)
+  if (!(checkIsVar(var1) & checkIsVar(var2))) {
+    stop("Inputs must be VARs")
+  }
+  
+  p1 <- length(var1$A)
+  p2 <- length(var2$A)
+  
+  if (p1 != p2) {
+    warning("Different VAR orders: plotting up to the min one")
+    p <- min(p1,p2)
+  } else {
+    p <- p1
+  }
   
   pl <- list()
-  # par(mfrow = c(2,p))
+  
   for (i in 1:p) {
     pl[[i]] <- plotMatrix(var1$A[[i]])
   }

@@ -81,3 +81,44 @@ spectralRadius <- function(M) {
 spectralNorm <- function(M) {
   return(sqrt(spectralRadius(t(M) %*% M)))
 }
+
+#' @title Accuracy metric 
+#' 
+#' @description Compute the accuracy of a fit
+#' @param referenceM the matrix to use as reference
+#' @param A the matrix obtained from a fit
+#' 
+#' @usage accuracy(referenceM, A)
+#'
+#' @export
+accuracy <- function(referenceM, A) {
+  N <- ncol(A)
+  L <- A
+  L[L!=0] <- 1
+  L[L==0] <- 0
+  
+  genL <- referenceM
+  genL[genL!=0] <- 1
+  genL[genL==0] <- 0
+
+  acc <- 1 -sum(abs(L-genL))/N^2   # accuracy    -(1 - sum(genL)/N^2)
+  return(acc)
+}
+
+#' @title Check is var
+#' 
+#' @description Check if the input is a var object
+#' @param v the object to test
+#' 
+#' @usage checkIsVar(v)
+#'
+#' @export
+checkIsVar <- function(v) {
+  
+  if (!is.null(attr(v,"class"))){
+    ifelse(attr(v,"class") == "var", return(TRUE), return(FALSE))
+  } else {
+    return(FALSE)
+  }
+}
+

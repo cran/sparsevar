@@ -13,18 +13,29 @@ set.seed(1)
 sim <- simulateVAR(N = 20, p = 2)
 
 ## ---- cache = TRUE-------------------------------------------------------
-est <- estimateVAR(sim$data$series, p = 2, options = list(foldsIDs = TRUE))
+fit <- fitVAR(sim$series, p = 2)
 
 ## ------------------------------------------------------------------------
-plotComparisonVAR(sim, est)
+plotComparisonVAR(sim, fit)
 
 ## ---- eval=FALSE---------------------------------------------------------
-#  results <- estimateVAR(rets)
+#  irf <- impulseResponse(fit)
+#  eb <- errorBandsIRF(fit, irf)
 
 ## ---- eval=FALSE---------------------------------------------------------
-#  results <- estimateVAR(rets, p = 3, penalty = "ENET",
-#                         options = list(parallel = TRUE, ncores = 5, alpha = 0.95,
-#                                        type.measure = "mae", lambda = "lambda.1se"))
+#  results <- fitVAR(rets)
+
+## ---- eval=FALSE---------------------------------------------------------
+#  results <- fitVAR(rets, p = 3, penalty = "ENET", parallel = TRUE,
+#                    ncores = 5, alpha = 0.95, type.measure = "mae",
+#                    lambda = "lambda.1se")
+
+## ---- cache=TRUE---------------------------------------------------------
+irf <- impulseResponse(fit)
+eb <- errorBandsIRF(fit, irf, verbose = FALSE)
+
+## ------------------------------------------------------------------------
+plotIRFGrid(irf, eb, indexes = c(11,20))
 
 ## ---- eval=FALSE---------------------------------------------------------
 #  sim <- simulateVAR(N = 100, nobs = 250, rho = 0.75, sparsity = 0.05, method = "normal")
