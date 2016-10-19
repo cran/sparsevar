@@ -22,10 +22,14 @@
 #' @return time elapsed time for the estimation
 #' 
 #' @export
-fitVECM <- function(data, p = 2, penalty = "ENET", method = "cv", logScale = TRUE, ...) {
+fitVECM <- function(data, p = 1, penalty = "ENET", method = "cv", logScale = TRUE, ...) {
   
   nr <- nrow(data)
   nc <- ncol(data)
+  
+  p <- p + 1
+  
+  opt <- list(...)
   
   # by default log-scale the data
   if (logScale == TRUE) {
@@ -55,6 +59,15 @@ fitVECM <- function(data, p = 2, penalty = "ENET", method = "cv", logScale = TRU
   output$mse <- resultsVAR$mse
   output$time <- resultsVAR$time
   output$residuals <- resultsVAR$residuals
+  
+  if (is.null(opt$methodCov)) {
+    output$sigma <- estimateCovariance(output$residuals)
+  } else {
+    output$sigma <- estimateCovariance(output$residuals, methodCovariance = opt$methodCov)
+  }
+  
+  attr(output, "class") <- "vecm"
+  attr(output, "type") <- "fit"
   
   return(output)
   
