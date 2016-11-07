@@ -4,7 +4,7 @@
 \alias{simulateVAR}
 \title{VAR simulation}
 \usage{
-simulateVAR(N, p, nobs, rho, sparsity, mu, method, covariance)
+simulateVAR(N, p, nobs, rho, sparsity, mu, method, covariance, ...)
 }
 \arguments{
 \item{N}{dimension of the time series.}
@@ -24,6 +24,10 @@ are \code{"normal"} or \code{"bimodal"}.}
 
 \item{covariance}{type of covariance matrix to use in the simulation. Possible
 values: \code{"toeplitz"}, \code{"block1"}, \code{"block2"} or simply \code{"diagonal"}.}
+
+\item{...}{the options for the simulation. These are:
+\code{muMat}: the mean of the entries of the VAR matrices;
+\code{sdMat}: the sd of the entries of the matrices;}
 }
 \value{
 A a list of NxN matrices ordered by lag

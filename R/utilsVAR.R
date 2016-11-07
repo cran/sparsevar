@@ -23,7 +23,6 @@ transformData <- function(data, p, opt) {
   # center the matrix columns (default)
   center <- ifelse(is.null(opt$center), TRUE, opt$center)
 
-
   if (center == TRUE) {
     if (opt$method == "timeSlice") {
       leaveOut <- ifelse(is.null(opt$leaveOut), 10, opt$leaveOut)
@@ -33,6 +32,8 @@ transformData <- function(data, p, opt) {
     }
     cm <- matrix(rep(m, nrow(data)), nrow = nrow(data), byrow = TRUE)
     data <- data - cm
+  } else {
+    m <- rep(0, nc)
   }
 
   if (scale == TRUE) {
@@ -212,12 +213,14 @@ computeResiduals <- function(data, A) {
 #'
 #' @usage companionVAR(v)
 #'
-#' @param v the VAR object as from fitVAR or simulateVAR
+#' @param v the VAR object as from \code{fitVAR} or \code{simulateVAR}
 #'
 #' @export
 companionVAR <- function(v) {
 
-  ## TODO: check that v is a var object
+  if (!checkIsVar(v)) {
+    stop("v must be a var object")
+  }
   A <- v$A
   nc <- ncol(A[[1]])
   p <- length(A)
@@ -251,7 +254,9 @@ companionVAR <- function(v) {
 bootstrappedVAR <- function(v) {
 
   ## This function creates the bootstrapped time series
-  ## TODO: check that v is a var object
+  if (!checkIsVar(v)) {
+    stop("v must be a var object")
+  }
   r <- v$residuals
   s <- v$series
   A <- v$A
@@ -329,11 +334,11 @@ informCrit <- function(v) {
       sigma <- v[[i]]$sigma
       nr <- nrow(v[[i]]$residuals)
       nc <- ncol(v[[i]]$residuals)
-      S <- (nr / (nr - nc * p - 1)) * sigma
-      d <- det(S)
+      d <- det(sigma)
       r[i,1] <- log(d) + (2*p*nc^2)/nr                 # AIC
       r[i,2] <- log(d) + (p*nc^2)/nr * log(nr)         # Schwarz
       r[i,3] <- log(d) + (2*p*nc^2)/nr * log(log(nr))  # Hannan-Quinn
+      
     }
     results <- data.frame(r)
     colnames(results) <- c("AIC", "Schwarz", "HannanQuinn")
@@ -375,12 +380,14 @@ estimateCovariance <- function(res, methodCovariance = "tiger", ...) {
 #' @export
 computeForecasts <- function(v, numSteps = 1) {
 
-  if (attr(v, "class") == "var"){
+  if(!checkIsVar(v)) {
+    stop("You must pass a var object.")
+  } else {
     mu <- v$mu
     data <- v$series
     v <- v$A
   }
-
+  
   if (!is.list(v)) {
     stop("v must be a var object or a list of matrices.")
   } else {

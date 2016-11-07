@@ -2,7 +2,7 @@
 #'
 #' @description This function generates a simulated multivariate VAR time series.
 #'
-#' @usage simulateVAR(N, p, nobs, rho, sparsity, mu, method, covariance)
+#' @usage simulateVAR(N, p, nobs, rho, sparsity, mu, method, covariance, ...)
 #'
 #' @param N dimension of the time series.
 #' @param p number of lags of the VAR model.
@@ -14,7 +14,10 @@
 #' are \code{"normal"} or \code{"bimodal"}.
 #' @param covariance type of covariance matrix to use in the simulation. Possible
 #' values: \code{"toeplitz"}, \code{"block1"}, \code{"block2"} or simply \code{"diagonal"}.
-#'
+#' @param ... the options for the simulation. These are:
+#' \code{muMat}: the mean of the entries of the VAR matrices;
+#' \code{sdMat}: the sd of the entries of the matrices;
+#' 
 #' @return A a list of NxN matrices ordered by lag
 #' @return data a list with two elements: \code{series} the multivariate time series and
 #' \code{noises} the time series of errors
@@ -22,20 +25,43 @@
 #'
 #' @export
 simulateVAR <- function(N = 100, p = 1, nobs = 250, rho = 0.5, sparsity = 0.05,
-                        mu = 0, method = "normal", covariance = "Toeplitz") {
+                        mu = 0, method = "normal", covariance = "Toeplitz", ...) {
 
-  # Create the list of the VAR matrices
-  A <- list()
-  for (i in 1:p) {
-    A[[i]] <- createSparseMatrix(sparsity = sparsity, N = N, method = method, stationary = TRUE, p = p)
-    l <- max(Mod(eigen(A[[i]])$values))
-    while ((l > 1) | (l == 0)) {
-      A[[i]] <- createSparseMatrix(sparsity = sparsity, N = N, method = method, stationary = TRUE, p = p)
-      l <- max(Mod(eigen(A[[i]])$values))
+  opt <- list(...)
+  # Create a var object to save the matrices (the output)
+  out <- list()
+  attr(out, "class") <- "var"
+  attr(out, "type") <- "simulation"
+  
+  out$A <- list()
+  
+  if (!is.null(opt$fixedMat)) {
+    # The user passed a list of matrices
+    out$A <- opt$fixedMat
+    if (!checkMatrices(out$A)){
+      stop("The matrices you passed are incompatible.")
     }
-    A[[i]] <- 1/sqrt(p) * A[[i]]
+    if (max(Mod(eigen(as.matrix(companionVAR(out)))$values)) >= 1) {
+      warning("The VAR you passed is instable.")
+    }
+  } else { 
+    stable <- FALSE
+    while (stable == FALSE) {
+      for (i in 1:p) {
+        out$A[[i]] <- createSparseMatrix(sparsity = sparsity, N = N, method = method, stationary = TRUE, p = p, ...)
+        l <- max(Mod(eigen(out$A[[i]])$values))
+        while ((l > 1) | (l == 0)) {
+          out$A[[i]] <- createSparseMatrix(sparsity = sparsity, N = N, method = method, stationary = TRUE, p = p, ...)
+          l <- max(Mod(eigen(out$A[[i]])$values))
+        }
+        out$A[[i]] <- 1/sqrt(p) * out$A[[i]]
+      }
+      if (max(Mod(eigen(as.matrix(companionVAR(out)))$values)) < 1) {
+        stable <- TRUE
+      }
+    }
   }
-
+  
   # Covariance Matrix: Toeplitz, Block1 or Block2
   if (covariance == "block1"){
 
@@ -79,27 +105,22 @@ simulateVAR <- function(N = 100, p = 1, nobs = 250, rho = 0.5, sparsity = 0.05,
 
   # Matrix for MA part
   theta <- matrix(0, N, N)
-  # ar <- 1:p
-
+  
   # Generate the VAR process
-  data <- generateVARseries(nobs = nobs, mu, AR = A, sigma = C, skip = 200)
+  data <- generateVARseries(nobs = nobs, mu, AR = out$A, sigma = C, skip = 200)
 
-  # Output
-  out <- list()
-  out$A <- A
+  # Complete the output
   out$series <- data$series
   out$noises <- data$noises
   out$sigma <- C
 
-  attr(out, "class") <- "var"
-  attr(out, "type") <- "simulation"
   return(out)
 
 }
 
 generateVARseries <- function(nobs, mu, AR, sigma, skip = 200) {
 
-  ## This function creates the simulated time series
+  # This function creates the simulated time series
 
   N <- nrow(sigma)
   nT <- nobs + skip
@@ -135,4 +156,33 @@ generateVARseries <- function(nobs, mu, AR, sigma, skip = 200) {
   out$noises <- at
   return(out)
 
+}
+
+checkMatrices <- function(A) {
+  
+  # This function check if all the matrices passed have the same dimensions
+  if (!is.list(A)) {
+    
+    return(FALSE)
+  
+  } else {
+    
+    l <- length(A)
+    
+    if(l>1){
+    
+      for (i in 1:(l-1)) {
+        
+        if (sum(1-(dim(A[[i]]) == dim(A[[i+1]]))) != 0) {
+          return(FALSE)
+        }
+        
+      }
+      return(TRUE)
+    
+    } else {
+      return(TRUE)
+    }
+    
+  }
 }
