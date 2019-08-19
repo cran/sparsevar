@@ -3,12 +3,13 @@
 #' @description Plot a sparse matrix
 #' 
 #' @param M the matrix to plot
+#' @param colors dark or light
 #' @return An \code{image} plot with a particular color palette (black zero entries, red 
 #' for the negative ones and green for the positive)
-#' @usage plotMatrix(M)
+#' @usage plotMatrix(M, colors)
 #' 
 #' @export
-plotMatrix <- function(M) {
+plotMatrix <- function(M, colors = "dark") {
   
   if (!is.matrix(M)) { 
     stop("Input must be a matrix") 
@@ -16,9 +17,19 @@ plotMatrix <- function(M) {
   
   nr <- nrow(M)
   nc <- ncol(M)
-  M <- t(M)[, nc:1]
-  ggplot2::ggplot(reshape2::melt(M), ggplot2::aes_string(x='Var1', y='Var2', fill='value')) + ggplot2::geom_raster() +
-           ggplot2::scale_fill_gradient2(low='red', high='green', mid='black') + ggplot2::xlab("Row") + ggplot2::ylab("Col")
+  M <- t(M)[, nr:1]
+  if (colors == "dark") {
+    ggplot2::ggplot(reshape2::melt(M), ggplot2::aes_string(x='Var1', y='Var2', fill='value')) + ggplot2::geom_raster() +
+    ggplot2::scale_fill_gradient2(low='red', high='green', mid='black') + ggplot2::xlab("Row") + ggplot2::ylab("Col") +
+    ggplot2::theme(axis.text.x=ggplot2::element_text(angle=45,hjust=1,vjust=1))    
+  } else if (colors == "light") {
+    ggplot2::ggplot(reshape2::melt(M), ggplot2::aes_string(x='Var1', y='Var2', fill='value')) + ggplot2::geom_raster() +
+    ggplot2::scale_fill_gradient2(low='red', high='blue', mid='white') + ggplot2::xlab("Row") + ggplot2::ylab("Col") +
+    ggplot2::theme(axis.text.x=ggplot2::element_text(angle=45,hjust=1,vjust=1))    
+  } else {
+    stop("Colors must be\"light\" or \"dark\".")
+  }
+   
   
 }
 
@@ -28,12 +39,14 @@ plotMatrix <- function(M) {
 #' 
 #' @param ... a sequence of VAR objects (one or more
 #' than one, as from \code{simulateVAR} or \code{fitVAR})
-#' @return An \code{image} plot with a specific color palette (black zero entries, red 
-#' for the negative ones and green for the positive)
-#' @usage plotVAR(...)
+#' @param colors the gradient used to plot the matrix. It can be "light" (low =
+#' red -- mid = white -- high = blue) or "dark" (low = red -- mid = black -- 
+#' high = green)
+#' @return An \code{image} plot with a specific color palette 
+#' @usage plotVAR(..., colors)
 #' 
 #' @export
-plotVAR <- function(...) {
+plotVAR <- function(..., colors = "dark") {
   
   vars <- list(...)
   l <- length(vars)
@@ -60,7 +73,7 @@ plotVAR <- function(...) {
   
   for (i in 1:l) {
     for (j in 1:varorder) {
-      pl[[((i-1)*varorder)+j]] <- plotMatrix(vars[[i]]$A[[j]])
+      pl[[((i-1)*varorder)+j]] <- plotMatrix(vars[[i]]$A[[j]], colors = colors)
     }
   }
   
@@ -89,26 +102,32 @@ plotVECM <- function(v) {
   
   pl[[1]] <- plotMatrix(v$Pi)
   
-  for (i in 1:l) {
-    pl[[i+1]] <- plotMatrix(v$G[[i]])
+  if (l > 0) {
+    for (i in 1:l) {
+      pl[[i+1]] <- plotMatrix(v$G[[i]])
+    }
   }
   
   multiplot(plotlist = pl, cols = l+1, layout = matrix(1:(l+1), nrow = 1, byrow = TRUE))
   
 }
 
-# Multiple plot function
-#
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
-# From R Cookbook
-multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+#' @title Multiplots with ggplot
+#' 
+#' @description Multiple plot function. ggplot objects can be passed in ..., or 
+#' to plotlist (as a list of ggplot objects)
+#' @param ... a sequence of ggplots to be plotted in the grid.
+#' @param plotlist a list containing ggplots as elements.  
+#' @param cols number of columns in layout
+#' @param layout a matrix specifying the layout. If present, 'cols' is ignored.
+#' If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+#' then plot 1 will go in the upper left, 2 will go in the upper right, and
+#' 3 will go all the way across the bottom.
+#' Taken from R Cookbook
+#' 
+#' @return A ggplot containing the plots passed as arguments 
+#' @export
+multiplot <- function(..., plotlist=NULL, cols=1, layout=NULL) {
   # library(grid)
   
   # Make a list from the ... arguments and plotlist

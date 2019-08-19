@@ -96,16 +96,17 @@ varENET <- function(data, p, lambdas, opt) {
 #'
 #' @description Estimate VAR using SCAD penalty
 #'
-#' @usage varSCAD(data, p, lambdas, opt)
+#' @usage varSCAD(data, p, lambdas, opt, penalty)
 #'
 #' @param data the data
 #' @param p the order of the VAR
 #' @param lambdas a vector containing the lambdas to be used in the fit
 #' @param opt a list containing the options
+#' @param penalty a string "SCAD" or something else
 #'
 #' @export
-varSCAD <- function(data, p, lambdas, opt) {
 
+varSCAD <- function(data, p, lambdas, opt, penalty = "SCAD") {
   ## Fit a VAR for a sequence of lambdas
   nc <- ncol(data)
   nr <- nrow(data)
@@ -113,11 +114,14 @@ varSCAD <- function(data, p, lambdas, opt) {
   # transform the dataset
   trDt <- transformData(data, p, opt)
 
-  fit <- ncvreg::ncvreg(as.matrix(trDt$X), trDt$y, family = "gaussian", penalty = "SCAD",
-                        alpha = 1, lambda = lambdas)
-
+  if (penalty == "SCAD") {
+    fit <- ncvreg::ncvreg(as.matrix(trDt$X), trDt$y, family = "gaussian", penalty = "SCAD",
+                          alpha = 1, lambda = lambdas)
+  } else {
+    stop("[WIP] Only SCAD regression is supported at the moment")
+    # fit <- sparsevar::scadReg(as(trDt$X, "dgCMatrix"), trDt$y, alpha = 1, lambda = lambdas)
+  }
   return(fit)
-
 }
 
 #' @title VAR MCP
@@ -257,18 +261,20 @@ bootstrappedVAR <- function(v) {
   if (!checkIsVar(v)) {
     stop("v must be a var object")
   }
+
   r <- v$residuals
   s <- v$series
   A <- v$A
   N <- ncol(A[[1]])
   p <- length(A)
   t <- nrow(r)
+  r <- r - matrix(colMeans(r), ncol = N, nrow = t)
 
   zt <- matrix(0, nrow = t, ncol = N)
   zt[1:p,] <- s[1:p,]
 
   for (t0 in (p+1):t) {
-    ix <- sample(1:t, 1)
+    ix <- sample((p+1):t, 1)
     u <- r[ix, ]
     vv <- rep(0, N)
     for (i in 1:p){
@@ -324,10 +330,14 @@ informCrit <- function(v) {
     k <- length(v)
     r <- matrix(0, nrow = k, ncol = 3)
     for (i in 1:k) {
-      if (attr(v[[1]], "class") == "var") {
+      if (attr(v[[1]], "class") == "var" | attr(v[[1]], "class") == "vecm") {
         p <- length(v[[i]]$A)
-      } else if (attr(v[[1]], "class") == "vecm") {
-        p <- length(v[[1]]$G) + 1
+        # Compute sparsity
+        s <- 0
+        for (l in 1:p) {
+          s <- s + sum(v[[i]]$A[[l]]!=0)
+        }
+        sp <- s/(p*ncol(v[[i]]$A[[1]])^2)          
       } else {
         stop("List elements must be var or vecm objects.")
       }
@@ -335,13 +345,14 @@ informCrit <- function(v) {
       nr <- nrow(v[[i]]$residuals)
       nc <- ncol(v[[i]]$residuals)
       d <- det(sigma)
-      r[i,1] <- log(d) + (2*p*nc^2)/nr                 # AIC
-      r[i,2] <- log(d) + (p*nc^2)/nr * log(nr)         # Schwarz
-      r[i,3] <- log(d) + (2*p*nc^2)/nr * log(log(nr))  # Hannan-Quinn
-      
+
+      r[i,1] <- log(d) + (2*p*sp*nc^2)/nr                 # AIC
+      r[i,2] <- log(d) + (log(nr)/nr) * (p*sp*nc^2)       # BIC
+      r[i,3] <- log(d) + (2*p*sp*nc^2)/nr * log(log(nr))  # Hannan-Quinn
+
     }
     results <- data.frame(r)
-    colnames(results) <- c("AIC", "Schwarz", "HannanQuinn")
+    colnames(results) <- c("AIC", "BIC", "HannanQuinn")
   } else {
     stop("Input must be a list of var models.")
   }
@@ -349,19 +360,20 @@ informCrit <- function(v) {
   return(results)
 }
 
-estimateCovariance <- function(res, methodCovariance = "tiger", ...) {
-
-  opt <- list(...)
+estimateCovariance <- function(res, ...) {
 
   nc <- ncol(res)
-  nr <- nrow(res)
-
-  if (nr < nc){
-    tmpFit <- flare::sugm(res, method = methodCovariance, verbose = FALSE)
-    l <- length(tmpFit$icov)
-    sigma <- solve(tmpFit$icov[[l]])
-  } else {
-    sigma <- stats::cov(res)
+  
+  # Different methods for covaraince estimation?
+  opt <- list(...)
+  
+  s <- corpcor::cov.shrink(res, verbose = FALSE)
+  sigma <- matrix(0, ncol = nc, nrow = nc)
+  
+  for (i in 1:nc) {
+    for (j in 1:nc) {
+      sigma[i,j] <- s[i,j]
+    }
   }
 
   return(sigma)
@@ -387,7 +399,7 @@ computeForecasts <- function(v, numSteps = 1) {
     data <- v$series
     v <- v$A
   }
-  
+
   if (!is.list(v)) {
     stop("v must be a var object or a list of matrices.")
   } else {
@@ -418,4 +430,20 @@ computeForecasts <- function(v, numSteps = 1) {
   }
   f <- f + matrix(rep(mu, length(mu)), length(mu), numSteps)
   return(f)
+}
+
+applyThreshold <- function(A, nr, nc, p, type = "soft") {
+
+  if (type == "soft") {
+    tr <- 1 / sqrt(p*nc*log(nr))
+  } else if (type == "hard") {
+    tr <- (nc)^(-0.49)
+  } else {
+    stop("Unknown threshold type. Possible values are: \"soft\" or \"hard\"")
+  }
+
+  L <- abs(A) >= tr
+  A <- A * L
+  return(A)
+
 }

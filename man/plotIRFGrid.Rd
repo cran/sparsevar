@@ -4,7 +4,7 @@
 \alias{plotIRFGrid}
 \title{IRF grid plot}
 \usage{
-plotIRFGrid(irf, eb, indexes, type)
+plotIRFGrid(irf, eb, indexes, type, bands)
 }
 \arguments{
 \item{irf}{the irf object computed using impulseResponse}
@@ -15,6 +15,8 @@ plotIRFGrid(irf, eb, indexes, type)
 
 \item{type}{plot the irf (\code{type = "irf"} by default) or the orthogonal irf 
 (\code{type = "oirf"})}
+
+\item{bands}{which type of bands to plot ("quantiles" (default) or  "sd")}
 }
 \value{
 An \code{image} plot relative to the impulse response function.
@@ -22,4 +24,3 @@ An \code{image} plot relative to the impulse response function.
 \description{
 Plot a IRF grid object
 }
-

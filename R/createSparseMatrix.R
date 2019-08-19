@@ -9,7 +9,7 @@
 #' @param stationary should the spectral radius of the matrix be smaller than 1?
 #' Possible values are \code{TRUE} or \code{FALSE}. Default is \code{FALSE}.
 #' @param p normalization constant (used for VAR of order greater than 1, default = 1)
-#' @param ... other options for the matrix (you can specify the mean \code{mu} and the 
+#' @param ... other options for the matrix (you can specify the mean \code{mu} and the
 #' standard deviation \code{sd}).
 #' @return An NxN sparse matrix.
 #' @examples
@@ -60,8 +60,9 @@ createSparseMatrix <- function(N, sparsity, method = "normal", stationary = FALS
 
   if (stationary == TRUE) {
     # if spectral radius < 1 is needed, return the re-normalized matrix
-    K <- 1 + base::abs(mu)
-    return(1/(K * base::sqrt(p * sparsity * N)) * A)
+    # K <- 1 + base::abs(mu)
+    K <- 1
+    return(1/(K * base::sqrt(p * sparsity * N * sd)) * A)
     # return(1/(max(Mod(eigen(A)$values)) + 0.01) * A)
   } else {
     return(A)

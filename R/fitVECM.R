@@ -22,7 +22,7 @@
 #' @return time elapsed time for the estimation
 #' 
 #' @export
-fitVECM <- function(data, p = 1, penalty = "ENET", method = "cv", logScale = TRUE, ...) {
+fitVECM <- function(data, p = 0, penalty = "ENET", method = "cv", logScale = TRUE, ...) {
   
   nr <- nrow(data)
   nc <- ncol(data)
@@ -30,6 +30,7 @@ fitVECM <- function(data, p = 1, penalty = "ENET", method = "cv", logScale = TRU
   p <- p + 1
   
   opt <- list(...)
+  opt$center <- FALSE
   
   # by default log-scale the data
   if (logScale == TRUE) {
@@ -48,13 +49,17 @@ fitVECM <- function(data, p = 1, penalty = "ENET", method = "cv", logScale = TRU
   # Gamma matrices
   G <- list()
   
-  for (k in 1:(p-1)) {
-    G[[k]] <- - matrixSum(M, ix = k+1)
+  if (p>1){
+    for (k in 1:(p-1)) {
+      G[[k]] <- - matrixSum(M, ix = k+1)
+    }
   }
   
   output <- list()
+  output$mu <- resultsVAR$mu
   output$Pi <- Pi
   output$G <- G
+  output$A <- resultsVAR$A
   output$fit <- resultsVAR$fit
   output$mse <- resultsVAR$mse
   output$mseSD <- resultsVAR$mseSD
@@ -90,5 +95,90 @@ matrixSum <- function(M, ix = 1) {
   }
   
   return(A)
+  
+}
+
+#' @title Decompose Pi VECM matrix
+#' 
+#' @description A function to estimate a (possibly big) multivariate VECM time series
+#' using penalized least squares methods, such as ENET, SCAD or MC+.
+#'  
+#' @usage decomposePi(vecm, rk, ...)
+#' 
+#' @param vecm the VECM object
+#' @param rk rank
+#' @param ... options for the function (TODO: specify)
+#' 
+#' @return alpha
+#' @return beta
+#' 
+#' @export
+decomposePi <- function(vecm, rk, ...) {
+  
+  if(attr(vecm, "class")!="vecm") {
+    stop("The input is not a vecm object.")
+  }
+  
+  # Different covariance methods?
+  opt <- list(...)
+    
+  nc <- ncol(vecm$Pi)
+  Pi <- vecm$Pi
+  colnames(Pi) <- NULL
+  rownames(Pi) <- NULL
+  sig <- corpcor::invcov.shrink(vecm$residuals, verbose = FALSE)
+  colnames(sig) <- NULL
+  rownames(sig) <- NULL
+  
+  if(rk < nc & rk > 0) {
+    a <- Pi[,1:rk]
+    b <- t(solve(t(a)%*%sig%*%a)%*%(t(a)%*%sig%*%Pi[,(rk+1):nc]))
+    b <- rbind(diag(1, rk, rk), b)
+  } else if (rk == nc) {
+    a <- Pi
+    b <- diag(1, rk, rk)
+  } else {
+    a <- numeric(length = nc)
+    b <- Pi
+  }
+
+  out <- list()
+  out$alpha <- a
+  out$beta <- b
+  return(out)
+  
+}
+
+decomposePi2 <- function(vecm, rk) {
+  
+  if(attr(vecm, "class")!="vecm") {
+    stop("The input is not a vecm object.")
+  }
+  
+  nc <- ncol(vecm$Pi)
+  Pi <- vecm$Pi
+  colnames(Pi) <- NULL
+  rownames(Pi) <- NULL
+  
+  if(rk >=1) {
+    a <- Pi[,1:rk]
+    # s <- solve(vecm$sigma)
+    # b <- t(solve(t(a)%*%s%*%a)%*%(t(a)%*%s%*%vecm$Pi[,(rk+1):nc]))
+    # b <- rbind(diag(1, rk, rk), b)
+    A <- kronecker(diag(1,nc,nc), a)
+    B <- as.numeric(Pi)
+    b <- matrix(qr.solve(A,B), ncol = rk, nrow = nc, byrow = TRUE)
+    bT <- matrix(qr.solve(A,B), ncol = rk, nrow = nc, byrow = FALSE)
+  } else {
+    a <- numeric(length = nc)
+    b <- Pi
+    bT <- t(Pi)
+  }
+  
+  out <- list()
+  out$alpha <- a
+  out$beta <- b
+  out$betaT <- bT
+  return(out)
   
 }
