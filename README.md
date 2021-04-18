@@ -1,6 +1,6 @@
 ## Sparse VAR (sparsevar)
 [![License](http://img.shields.io/badge/license-GPL%20%28%3E=%202%29-brightgreen.svg?style=flat)](http://www.gnu.org/licenses/gpl-2.0.html)
-[![Version](https://img.shields.io/badge/version-0.0.10-oran.svg)](https://github.com/svazzole/sparsevar)
+[![Version](https://img.shields.io/badge/version-0.1.0-oran.svg)](https://github.com/svazzole/sparsevar)
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/sparsevar)](https://cran.r-project.org/package=sparsevar)
 [![Downloads](http://cranlogs.r-pkg.org/badges/sparsevar)](https://cran.r-project.org/package=sparsevar)
 [![Total Downloads](http://cranlogs.r-pkg.org/badges/grand-total/sparsevar?color=brightgreen)](https://cran.r-project.org/package=sparsevar)
@@ -20,7 +20,6 @@ To install the developing version:
 install.packages("devtools")
 devtools::install_github("svazzole/sparsevar", "master")
 ```
-Check [here](https://www.rstudio.com/products/rpackages/devtools/) to understand which are the dependencies of `devtools` for your OS.
 
 ### Quick start
 
@@ -80,9 +79,11 @@ For plotting:
 - `plotGridIRF`: multiple plots of IRF.
 
 ### Papers using `sparsevar`
-[[1](http://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005364)] Gibbons SM, Kearney SM, Smillie CS, Alm EJ (2017) Two dynamic regimes in the human gut microbiome. PLoS Comput Biol 13(2): e1005364.
+[[1](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005364)] Gibbons SM, Kearney SM, Smillie CS, Alm EJ (2017) Two dynamic regimes in the human gut microbiome. PLoS Comput. Biol. 13(2): e1005364.
+
+[[2](https://doi.org/10.1016/j.insmatheco.2019.07.004)] Quentin Guibert, Olivier Lopez, Pierrick Piette, Forecasting mortality rate improvements with a high-dimensional VAR, Insurance: Mathematics and Economics, Volume 88, 2019, Pages 255-272, ISSN 0167-6687.
 
 ### References
-[[1](http://projecteuclid.org/euclid.aos/1434546214)] Basu, Sumanta; Michailidis, George. Regularized estimation in sparse high-dimensional time series models. Ann. Statist. 43 (2015), no. 4, 1535--1567. doi:10.1214/15-AOS1315.
+[[1](https://projecteuclid.org/euclid.aos/1434546214)] Basu, Sumanta; Michailidis, George. Regularized estimation in sparse high-dimensional time series models. Ann. Statist. 43 (2015), no. 4, 1535--1567. doi:10.1214/15-AOS1315.
 
 [[2](https://books.google.it/books/?id=COUFCAAAQBAJ&redir_esc=y)] Lütkepohl, Helmut. New Introduction to Multiple Time Series Analysis. Springer Science & Business Media, 2005, ISBN 3540277528.

@@ -1,3 +1,9 @@
+# sparsevar 0.1.0
+
+- Fix bug in plotIRF
+- Linted code
+- Fixed knitr/markdown/rmarkdown problems as in https://github.com/yihui/knitr/issues/1864
+
 # sparsevar 0.0.11
 
 - Added CV on a predefined list of lambdas (thanks to PierrickPiette) 
@@ -16,13 +22,13 @@
 
 - Fast SCAD estimation (using picasso package; works only with SCAD and timeSlice)
 - Added function to compute VAR forecasts
-- Added information criteria (AIC, SChwartz and Hannan-Quinn)
+- Added information criteria (AIC, Schwartz and Hannan-Quinn)
 - Fixed mean estimation for timeSlice
 
 # sparsevar 0.0.7
 
 - Major code rewriting
-- Remove dependecies from MTS and caret
+- Remove dependencies from MTS and caret
 - Added impulse response error bands (using bootstrap)
 - Added plot functions for IRF
 - New timeSlice estimation
